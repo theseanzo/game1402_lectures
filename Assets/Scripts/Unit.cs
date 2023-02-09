@@ -8,6 +8,8 @@ public class Unit : MonoBehaviour //this contains code for all bears
     public Laser laserPrefab;//we can now specify a prefab laser
     public int fullHealth = 100;
     public int damage = 10; //when hitting something, you dole out 10 damage
+
+    public float respawnTime = 5.0f;//we will respawn in 5s after death
     private int health; //our currentHealth
 
     // Start is called before the first frame update
@@ -32,6 +34,7 @@ public class Unit : MonoBehaviour //this contains code for all bears
         myColor = GameManager.Instance.teams[team];
         transform.Find("Teddy_Body").GetComponent<SkinnedMeshRenderer>().material.color = myColor; //this changes the material color from one thing to another
         startPos = this.transform.position;
+        Respawn();
 
     }
     protected void ShootAt(Transform target)
@@ -39,8 +42,8 @@ public class Unit : MonoBehaviour //this contains code for all bears
         Unit unit = target.GetComponent<Unit>();
         if(unit != null)
         {
-            Debug.Log("we hit an ai unit"); 
-;        }
+            unit.OnHit(this);
+        }
     }
     protected void ShowLasers(Vector3 targetPosition)
     {
@@ -83,5 +86,32 @@ public class Unit : MonoBehaviour //this contains code for all bears
         origin.y += RAYCAST_LENGTH * 0.5f;
         LayerMask mask = LayerMask.GetMask("Terrain");
         return Physics.Raycast(origin, Vector3.down, RAYCAST_LENGTH, mask);
+    }
+    protected virtual void OnHit(Unit attacker)
+    {
+        Debug.Log("you hit me");
+        health -= attacker.damage; //when you are hit you take some damage
+        if(health <= 0) //once your health is below or equal to 0, you die
+        {
+            Die();
+        }
+    }
+    protected virtual void Die()
+    {
+        if (!isAlive)
+            return;
+        isAlive = false;
+        gameObject.layer = LayerMask.NameToLayer("DeadTeddy");
+        animator.SetBool("Die", true);
+        Invoke("Respawn", respawnTime);
+    }
+    protected virtual void Respawn()
+    {
+        //when we respawn, we need to 1) reset the position, 2) set them to alive again, 3) end the death animation, change the layer, and give them back some health
+        isAlive = true;
+        health = fullHealth;
+        animator.SetBool("Die", false);
+        gameObject.layer = LayerMask.NameToLayer("LiveTeddy");
+        this.transform.position = startPos;
     }
 }

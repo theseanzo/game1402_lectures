@@ -6,6 +6,7 @@ using UnityEngine.AI;
 public class AIController : Unit
 {
     public float lookDistance = 10;
+    public float shootInterval = 0.5f;//our enemies can shoot every half a second
     // Start is called before the first frame update
     private enum State
     {
@@ -21,7 +22,6 @@ public class AIController : Unit
     {
         agent = GetComponent<NavMeshAgent>(); //recall that we are a getting a component on an object, and the component we are getting is the navmeshagent
         base.Start();//we want to also call the base unit class's Start method so that we can utilize its functionality
-        SetState(State.Idle);
     }
     private void SetState(State newState)
     {
@@ -68,13 +68,22 @@ public class AIController : Unit
     private IEnumerator OnChasing()
     {
         agent.ResetPath(); //stop on the path you are going
+        float shootTimer = 0;
         while (currentEnemy.isAlive)
         {
+            shootTimer += Time.deltaTime; //Time.deltaTime is the amount of time since the last frame
             //we need to see if we still have vision of our enemy, and, if so, we will move to where they are 
             float distanceToEnemy = Vector3.Distance(currentEnemy.transform.position, this.transform.position);
             if(distanceToEnemy > lookDistance || !CanSee(currentEnemy.transform, currentEnemy.transform.position))
             {
                 agent.SetDestination(currentEnemy.transform.position);
+            }
+            else if (shootTimer >= shootInterval)
+            {
+                agent.ResetPath();
+                shootTimer = 0;
+                ShootAt(currentEnemy.transform);
+                ShowLasers(currentEnemy.transform.position);
             }
             yield return null;
         }
@@ -93,7 +102,7 @@ public class AIController : Unit
         {
             Unit unit = coll.GetComponent<Unit>();//this is game units whether they are an AI or player 
             //now we have to check if another unit is 1) our self, 2) on our team (don't chase your own team), and whether thay visible
-            if(unit != null && unit != this && unit.team != team && CanSee(unit.transform, unit.transform.position))
+            if(unit != null && unit != this && unit.team != team && unit.isAlive && CanSee(unit.transform, unit.transform.position))
             {
                 currentEnemy = unit; //follow the enemy
                 SetState(State.Chasing);
@@ -105,5 +114,17 @@ public class AIController : Unit
     {
         base.Update();
         animator.SetFloat("VerticalSpeed", agent.velocity.magnitude); //we need to update the speed we are moving at to the animator or else we won't shuffle through animation frames
+    }
+    protected override void Respawn()
+    {
+        base.Respawn();
+        SetState(State.Idle);
+    }
+    protected override void Die()
+    {
+        base.Die();
+        StopAllCoroutines(); //stop whatever state they are in 
+        agent.ResetPath(); //stop any path finding and movement
+        currentEnemy = null;
     }
 }

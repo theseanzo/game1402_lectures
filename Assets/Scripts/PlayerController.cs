@@ -39,6 +39,8 @@ public class PlayerController : Unit //this is code for the bear that we control
         base.Update();//update the parent class
 
         camContainer.Rotate(Input.GetAxis("Mouse Y") * mouseYSensitivity, 0, 0);
+        if (!isAlive) //if we are not alive, do not allow for movement
+            return;
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
         Vector3 input = new Vector3(horizontal, 0, vertical).normalized * speed; //recall that a normalized vector is one of length 1, i.e. it has no magnitude 
